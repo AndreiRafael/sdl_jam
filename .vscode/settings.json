@@ -1,0 +1,8 @@
+{
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "files.associations": {
+        "cmath": "c",
+        "*.tcc": "c",
+        "hf_scene.h": "c"
+    }
+}

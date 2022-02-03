@@ -1,0 +1,1 @@
+target_sourcefile(${CMAKE_CURRENT_SOURCE_DIR}/SourceFile ${GAME_TITLE})
