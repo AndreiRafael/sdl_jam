@@ -24,12 +24,13 @@ int main(int argc, char* argv[]) {
         "sdl_jam",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         800, 600,
-        SDL_WINDOW_SHOWN
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
     );
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
     hf_scene_setup(renderer);
+    hf_scene_set_render_size(900, 800);
     hf_scene_load(g_scene_get_menu());
     while(hf_scene_update());
     
