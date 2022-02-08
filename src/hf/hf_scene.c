@@ -14,6 +14,10 @@ void hf_scene_setup(SDL_Renderer* renderer) {
     sdl_renderer = renderer;
 }
 
+SDL_Renderer* hf_scene_get_renderer(void) {
+    return sdl_renderer;
+}
+
 void hf_scene_set_render_size(int width, int height) {
     if(render_texture) {
         SDL_DestroyTexture(render_texture);
@@ -26,6 +30,7 @@ void hf_scene_set_render_size(int width, int height) {
             SDL_TEXTUREACCESS_TARGET,
             width, height
         );
+        SDL_SetTextureScaleMode(render_texture, SDL_ScaleModeBest);
     }
 }
 
@@ -132,9 +137,14 @@ bool hf_scene_update(void) {
         }
 
         // TIMER & UPDATE
+        const Uint32 desired_fps = 60u;
+        const Uint32 desired_ticks = 1000u / desired_fps;
+        Uint32 delta_ticks = SDL_GetTicks() - prev_ticks;
+        if(delta_ticks < desired_ticks) {
+            SDL_Delay(desired_ticks - delta_ticks);
+        }
         Uint32 new_ticks = SDL_GetTicks();
-        Uint32 delta_ticks = new_ticks - prev_ticks;
-        current_scene.update((float)delta_ticks / 1000.f);
+        current_scene.update((float)(new_ticks - prev_ticks) / 1000.f);
         prev_ticks = new_ticks;
 
         // RENDER

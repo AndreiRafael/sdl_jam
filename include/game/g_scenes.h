@@ -4,5 +4,6 @@
 #include <hf/hf_scene.h>
 
 hf_scene g_scene_get_menu(void);
+hf_scene g_scene_get_editor(void);
 
 #endif//G_SCENES

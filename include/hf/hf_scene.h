@@ -16,6 +16,7 @@ typedef struct hf_scene_t {
 void hf_scene_setup(SDL_Renderer* renderer);
 void hf_scene_set_render_size(int width, int height);
 void hf_scene_get_render_size(int* width, int* height);
+SDL_Renderer* hf_scene_get_renderer(void);
 void hf_scene_window_pos_to_render_pos(int window_x, int window_y, int* render_x, int* render_y);
 void hf_scene_render_pos_to_window_pos(int render_x, int render_y, int* window_x, int* window_y);
 void hf_scene_load(hf_scene scene);
