@@ -1,5 +1,5 @@
 #include <game/g_scenes.h>
-#include <game/g_map_types.h>
+#include <game/g_helper.h>
 
 #include <math.h>
 #include <stdio.h>
@@ -56,98 +56,13 @@ static void load_map() {
         fread(&val, sizeof(unsigned char), 1, file);
         tiles[i] = (g_ground_type)val;
     }
-    for(int i = 0; i < tile_count; i++) {//read tiles
+    for(int i = 0; i < tile_count; i++) {//read entities
         unsigned char val;
         fread(&val, sizeof(unsigned char), 1, file);
         entities[i] = (g_entity_type)val;
     }
 
     fclose(file);
-}
-
-//retuns true if the informed position is off the grid
-bool is_off_grid(int grid_x, int grid_y) {
-    return grid_x < 0 || grid_y < 0 || grid_x >= g_map_size || grid_y >= g_map_size;
-}
-
-//convert mouse position(window) into grid position, returns false if off grid
-bool mouse_to_grid(int mouse_x, int mouse_y, int* grid_x, int* grid_y) {
-    int tex_x, tex_y;    
-    hf_scene_window_pos_to_render_pos(mouse_x, mouse_y, &tex_x, &tex_y);
-
-    int g_x, g_y;
-    g_x = tex_x / g_tile_size;
-    g_y = tex_y / g_tile_size;
-    if(grid_x) {
-        *grid_x = g_x;
-    }
-    if(grid_y) {
-        *grid_y = g_y;
-    }
-
-    return !is_off_grid(g_x, g_y);
-}
-
-SDL_Rect get_tile_rect(int grid_x, int grid_y) {
-    if(is_off_grid(grid_x, grid_y)) {
-        return (SDL_Rect){ 0, 0, 0, 0 };
-    }
-
-    return (SDL_Rect){
-        .x = grid_x * g_tile_size,
-        .y = grid_y * g_tile_size,
-        g_tile_size,
-        g_tile_size
-    };
-}
-
-//retruns -1 if off grid
-int grid_to_index(int grid_x, int grid_y) {
-    if(is_off_grid(grid_x, grid_y)) {
-        return -1;
-    }
-
-    return grid_x + grid_y * g_map_size;
-}
-
-void draw_map(SDL_Renderer* renderer) {
-    for(int x = 0; x < g_map_size; x++) {
-        for(int y = 0; y < g_map_size; y++) {
-            const int index = grid_to_index(x, y);
-            const g_ground_type ground_type = tiles[index];
-            switch (ground_type){
-            case g_ground_type_grass:
-                SDL_SetRenderDrawColor(renderer, 100, 255, 100, 255);
-                break;
-            case g_ground_type_dirt:
-                SDL_SetRenderDrawColor(renderer, 255, 200, 150, 255);
-                break;
-            default:
-                break;
-            }
-
-            SDL_Rect src_rect = {
-                .x = (int)ground_type * g_tile_size,
-                .y = 0,
-                .w = g_tile_size,
-                .h = g_tile_size
-            };
-
-            SDL_Rect tile_rect = get_tile_rect(x, y);
-            SDL_RenderCopy(renderer, ground_texture, &src_rect, &tile_rect);
-
-            if(entities[index] != g_entity_type_none) {
-                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-                SDL_Rect entity_rect = {
-                    .x = tile_rect.x + tile_rect.w / 4,
-                    .y = tile_rect.y + tile_rect.h / 4,
-                    .w = tile_rect.w / 2,
-                    .h = tile_rect.h / 2
-                };
-                SDL_RenderFillRect(renderer, &entity_rect);
-            }
-        }
-    }
 }
 
 static SDL_Rect get_ground_texture_rect(g_ground_type type) {
@@ -174,6 +89,32 @@ static SDL_Rect get_entity_texture_rect(g_entity_type type) {
     };
 }
 
+static void draw_map(SDL_Renderer* renderer) {
+    for(int x = 0; x < g_map_size; x++) {
+        for(int y = 0; y < g_map_size; y++) {
+            const int index = g_grid_to_index(x, y);
+            const g_ground_type ground_type = tiles[index];
+            SDL_Rect ground_src_rect = get_ground_texture_rect(ground_type);
+
+            SDL_Rect tile_rect = g_get_tile_rect(x, y);
+            SDL_RenderCopy(renderer, ground_texture, &ground_src_rect, &tile_rect);
+
+            const g_entity_type entity_type = entities[index];
+            if(entity_type != g_entity_type_none) {
+                const SDL_Rect entity_src_rect = get_entity_texture_rect(entity_type);
+
+                SDL_Rect entity_rect = {
+                    .x = tile_rect.x + tile_rect.w / 4,
+                    .y = tile_rect.y + tile_rect.h / 4,
+                    .w = tile_rect.w / 2,
+                    .h = tile_rect.h / 2
+                };
+                SDL_RenderCopy(renderer, entities_texture, &entity_src_rect, &entity_rect);
+            }
+        }
+    }
+}
+
 //generic scene functions
 static void init(void) {
     int win_w, win_h;
@@ -182,7 +123,7 @@ static void init(void) {
     int tile_count = g_map_size * g_map_size;
     tiles = calloc((size_t)tile_count, sizeof(g_ground_type));
     for(int i = 0; i < tile_count; i++) {
-        tiles[i] = g_ground_type_grass;
+        tiles[i] = g_ground_type_dirt;
     }
 
     entities = calloc((size_t)tile_count, sizeof(g_entity_type));
@@ -287,19 +228,21 @@ static void update(float delta_time) {
     int mouse_x, mouse_y;
     Uint32 mouse_buttons = SDL_GetMouseState(&mouse_x, &mouse_y);
     int grid_x, grid_y;
-    bool grid_valid = mouse_to_grid(mouse_x, mouse_y, &grid_x, &grid_y);    
+    bool grid_valid = g_mouse_to_grid(mouse_x, mouse_y, &grid_x, &grid_y);    
 
-    if(placing_ground) {
-        if(mouse_buttons & SDL_BUTTON_LMASK && grid_valid) {//holding left mouse button
-            tiles[grid_to_index(grid_x, grid_y)] = selected_ground_type;
+    if(grid_valid) {
+        int tile_index = g_grid_to_index(grid_x, grid_y);
+        if(placing_ground) {
+            if(mouse_buttons & SDL_BUTTON_LMASK) {//holding left mouse button
+                tiles[tile_index] = selected_ground_type;
+            }
         }
-    }
-    else {
-        if(mouse_buttons & SDL_BUTTON_LMASK && grid_valid) {//holding left mouse button
-            entities[grid_to_index(grid_x, grid_y)] = selected_entity_type;
+        else {
+            if(mouse_buttons & SDL_BUTTON_LMASK) {//holding left mouse button
+                entities[tile_index] = selected_entity_type;
+            }
         }
-    }
-    
+    }    
 }
 
 static void render(SDL_Renderer* renderer) {
@@ -357,8 +300,8 @@ static void render(SDL_Renderer* renderer) {
     int grid_x, grid_y;
 
     //draw grid flash over everything
-    if(mouse_to_grid(mouse_x, mouse_y, &grid_x, &grid_y)) {
-        SDL_Rect r = get_tile_rect(grid_x, grid_y);
+    if(g_mouse_to_grid(mouse_x, mouse_y, &grid_x, &grid_y)) {
+        SDL_Rect r = g_get_tile_rect(grid_x, grid_y);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderDrawRect(renderer, &r);
         Uint8 alpha = (Uint8)(fabsf(sinf(grid_flash)) * 100.f) + 20u;

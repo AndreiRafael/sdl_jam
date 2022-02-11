@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
 
     hf_scene_setup(renderer);
     hf_scene_set_render_size(1000, 800);
-    hf_scene_load(g_scene_get_editor());
+    hf_scene_load(g_scene_get_game());
     while(hf_scene_update());
     
     SDL_DestroyRenderer(renderer);

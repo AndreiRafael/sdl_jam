@@ -5,6 +5,7 @@
         "*.tcc": "c",
         "hf_scene.h": "c",
         "hf_dir.h": "c",
-        "sdl_image.h": "c"
+        "sdl_image.h": "c",
+        "stdlib.h": "c"
     }
 }
